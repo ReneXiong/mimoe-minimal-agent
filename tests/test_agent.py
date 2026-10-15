@@ -17,49 +17,70 @@ class AgentTests(unittest.TestCase):
                 agent.Client(url)
 
     def test_only_allowlisted_action(self):
-        self.assertEqual(agent.plan_query('{"tool":"search_runbooks","query":"lag"}'), "lag")
-        for action in ['not JSON', '{"tool":"shell","query":"rm -rf /"}',
-                       '{"tool":"search_runbooks","query":""}',
-                       '{"tool":"search_runbooks","query":"lag","path":"/etc/passwd"}']:
+        self.assertEqual(agent.parse_action('{"tool":"bash","command":"pwd"}')["command"], "pwd")
+        self.assertEqual(agent.parse_action('{"answer":"done"}'), {"answer": "done"})
+        self.assertEqual(agent.parse_action('```json\n{"answer":"done"}\n```'), {"answer": "done"})
+        for action in ['not JSON', '{"tool":"python","command":"pass"}',
+                       '{"tool":"bash","command":""}', '{"answer":""}',
+                       '{"tool":"bash","command":"pwd","extra":true}']:
             with self.subTest(action=action), self.assertRaises(agent.AgentError):
-                agent.plan_query(action)
+                agent.parse_action(action)
 
-    def test_search_ranks_and_ignores_symlinks(self):
+    def test_loop_returns_tool_results_to_model(self):
+        client, shell = Mock(), Mock()
+        client.chat.side_effect = ['{"tool":"bash","command":"pwd"}', '{"answer":"done"}']
+        shell.run.return_value = "/demo\n[exit code 0]"
+        messages = [{"role": "user", "content": "Where am I?"}]
+        with patch("sys.stdout", new_callable=io.StringIO):
+            self.assertEqual(agent.run_agent(client, "local", messages, shell,
+                                            approve=lambda _: True), "done")
+        shell.run.assert_called_once_with("pwd")
+        self.assertIn("/demo", messages[2]["content"])
+
+    def test_declined_command_never_runs(self):
+        client, shell = Mock(), Mock()
+        client.chat.side_effect = ['{"tool":"bash","command":"pwd"}', '{"answer":"Declined."}']
+        with patch("sys.stdout", new_callable=io.StringIO):
+            agent.run_agent(client, "local", [], shell, approve=lambda _: False)
+        shell.run.assert_not_called()
+
+    def test_protocol_errors_are_repaired_within_turn_limit(self):
+        client, shell = Mock(), Mock()
+        client.chat.side_effect = ["invalid", '{"answer":"done"}']
+        messages = []
+        self.assertEqual(agent.run_agent(client, "local", messages, shell), "done")
+        self.assertIn("Protocol error", messages[1]["content"])
+        shell.run.assert_not_called()
+        client.chat.side_effect = None
+        client.chat.return_value = "invalid"
+        with self.assertRaisesRegex(agent.AgentError, "Stopped after 2"):
+            agent.run_agent(client, "local", [], shell, max_turns=2)
+
+    def test_bash_preserves_state_and_reports_exit_status(self):
+        with tempfile.TemporaryDirectory() as tmp, agent.Bash(tmp) as shell:
+            shell.run("mkdir child; cd child; DEMO_STATE=hello")
+            self.assertIn("hello", shell.run('printf "%s" "$DEMO_STATE"'))
+            self.assertIn(str(Path(tmp).resolve() / "child"), shell.run("pwd"))
+            self.assertEqual(shell.run("false"), "[exit code 1]")
+            self.assertIn("alive", shell.run("echo alive"))
+
+    def test_shell_does_not_inherit_api_credentials(self):
         with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            (root / "queue.md").write_text("queue backlog consumer lag")
-            (root / "other.md").write_text("database connection")
-            (root / "link.md").symlink_to(root / "queue.md")
-            self.assertEqual(agent.search_runbooks("consumer lag", root), [
-                {"source": "queue.md", "text": "queue backlog consumer lag"}])
-            self.assertEqual(agent.search_runbooks("volcano", root), [])
-            self.assertEqual(agent.search_runbooks("What should I do?", root), [])
+            with patch.dict("os.environ", {"MIMOE_API_KEY": "test-secret"}):
+                with agent.Bash(tmp) as shell:
+                    self.assertEqual(shell.run('printf "%s" "${MIMOE_API_KEY-unset}"'),
+                                     "unset\n[exit code 0]")
 
-    def test_agent_uses_model_query_and_feeds_tool_result_back(self):
-        client = Mock()
-        client.chat.side_effect = [
-            '{"tool":"search_runbooks","query":"consumer lag"}',
-            'Check processing rate [queue-backlog.md].',
-        ]
-        answer = agent.run_agent(client, "local", "Messages are piling up")
-        self.assertIn("queue-backlog.md", answer)
-        self.assertEqual(client.chat.call_count, 2)
-        second_messages = client.chat.call_args_list[1].args[1]
-        self.assertIn("Preserve failed messages", second_messages[1]["content"])
-
-    def test_invalid_action_fallback_is_visible(self):
-        client = Mock()
-        client.chat.side_effect = ['I cannot use JSON', 'Check consumer logs.']
-        with patch("sys.stderr", new_callable=io.StringIO) as output:
-            answer = agent.run_agent(client, "local", "consumer lag", trace=True)
-        self.assertIn("invalid model action", output.getvalue())
-        self.assertIn("queue-backlog.md", answer)
-
-    def test_no_evidence_stops_without_invented_answer(self):
-        client = Mock()
-        client.chat.return_value = '{"tool":"search_runbooks","query":"volcano"}'
-        self.assertIn("could not find", agent.run_agent(client, "local", "volcano"))
-        self.assertEqual(client.chat.call_count, 1)
+    def test_shell_timeout_and_output_limit_stop_process(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with agent.Bash(tmp, timeout=0.1) as shell:
+                with self.assertRaisesRegex(agent.ShellError, "timed out"):
+                    shell.run("sleep 5")
+                self.assertIsNotNone(shell.process.returncode)
+            with agent.Bash(tmp, output_limit=100) as shell:
+                with self.assertRaisesRegex(agent.ShellError, "output limit"):
+                    shell.run("while true; do echo output; done")
+                self.assertIsNotNone(shell.process.returncode)
 
     def test_request_contract(self):
         client = agent.Client(api_key="test-key")

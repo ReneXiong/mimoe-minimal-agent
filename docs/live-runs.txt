@@ -1,47 +1,13 @@
-$ python3 agent.py --check
-{
-  "base_url": "http://127.0.0.1:8083/mimik-ai/openai/v1",
-  "loaded_models": [
-    "smollm2-1.7b"
-  ]
-}
+Local mimOE smoke test, 2026-10-14 (America/Vancouver)
+Model: qwen2.5-coder-3b (Q4_K_M)
+Command: python3 agent.py --model qwen2.5-coder-3b --workspace <demo-workspace> 'Create hello.txt containing hello, then read it back to verify.'
+API key supplied through the environment; not recorded.
 
-Exit: 0
+bash> echo 'hello' > hello.txt && cat hello.txt
+Run command? [y/N] y
+hello
+[exit code 0]
+The file 'hello.txt' was created with the content 'hello' and the content was read back correctly as 'hello'.
 
-$ python3 agent.py --trace Our queue backlog is growing and consumer lag is increasing. What should I check before scaling consumers?
-[plan] model selected query
-[tool] search_runbooks('queue backlog consumer lag')
-[sources] queue-backlog.md, http-errors.md
-[elapsed] 0.94s
-1. Compare incoming message rate with consumer processing rate.
-2. Check consumer error logs for repeated failures and retry loops.
-3. Inspect dead-letter queue count. Preserve failed messages for investigation.
-4. Check database latency and connection pool saturation before adding consumers.
-5. If consumers are healthy and downstream capacity is available, ask the operator to consider scaling consumers gradually.
-
-Retrieved sources: queue-backlog.md, http-errors.md
-
-Exit: 0
-
-$ python3 agent.py --trace The database connection pool is exhausted and requests are timing out. What should I check?
-[plan] model selected query
-[tool] search_runbooks('database connection pool exhausted timing out')
-[sources] database-connections.md, http-errors.md
-[elapsed] 1.19s
-1. Compare active and idle connections with the configured pool limit.
-2. Look for long-running queries and transactions holding connections.
-3. Review recent application deployments for connection leaks.
-4. Check database CPU, memory and query latency before increasing the pool size.
-5. Escalate to the database owner with timestamps, pool metrics and slow-query examples.
-
-Retrieved sources: database-connections.md, http-errors.md
-
-Exit: 0
-
-$ python3 agent.py --trace volcano geology
-[plan] model selected query
-[tool] search_runbooks('volcano geology')
-[sources] (none)
-I could not find a matching runbook. Please provide more specific symptoms.
-
-Exit: 0
+Observed process exit status: 0
+Independent file-content check: hello.txt contained hello followed by a newline.

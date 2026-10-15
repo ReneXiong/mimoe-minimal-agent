@@ -1,31 +1,16 @@
-# Two-minute walkthrough
+# Short walkthrough
 
-## What I built
+“I built a minimal coding agent that connects to mimOE Studio's local inference endpoint. It has one tool: persistent Bash. The model proposes a command, the host asks for approval, returns the actual output, and lets the model continue until it answers.”
 
-“I built a local runbook assistant using the BYO Framework approach. You describe an operational symptom, the model chooses search terms, a Python tool searches fictional Markdown runbooks, and the model uses the returned text to produce a checklist. Inference runs through mimOE Studio's local OpenAI-compatible endpoint.”
+1. Show the loaded model in Studio, then open its **API** panel.
+2. Run `python3 agent.py --check` to show the local URL and model IDs.
+3. In a disposable directory, ask it to create a text file and read it back. Inspect each command before approving it.
+4. Show that the answer follows actual tool output.
 
-## Show the connection
+“I used raw HTTP and Python's standard library so the integration is easy to inspect. The loop is inspired by DeepSeek Harness Minimal mode. I do not import the full framework: this exercise only needs a short prompt, history and a shell tool.”
 
-1. Open Studio's Model View and show the loaded SmolLM2 model.
-2. Click **API** and explain the inference base URL, model ID, and local authentication. Avoid exposing a customized API key in a recording.
-3. Run `python3 agent.py --check`.
+“Tool actions use a small JSON protocol because native function calling is not assumed. Invalid output gets feedback, with a hard turn limit. Commands have a timeout and output limit. Bash keeps directory and variable state across calls.”
 
-## Show the workflow
+“SmolLM2 could issue a command but failed to finish the JSON protocol reliably in a live test. That exposed the difference between answering a prompt and reliably driving a tool loop. Model choice and recorded verification are part of the integration.”
 
-```bash
-python3 agent.py --trace 'Our queue backlog is growing and consumer lag is increasing. What should I check before scaling consumers?'
-```
-
-“The trace distinguishes model planning from tool execution. The tool is ordinary Python. The second model call receives actual retrieved text. The host lists the files retrieved, even when the model omits citations.”
-
-## Why these choices
-
-“I used the standard library because this exercise only needs two HTTP calls for planning and synthesis, plus model discovery. A framework would add setup without much value here. Keyword search is sufficient for three tiny runbooks. I used validated JSON actions so the demo doesn't depend on native function calling support in this model.”
-
-## What I learned
-
-“The supplied portal URL returned a Page Not Found page, so I located the signed installer in the official GitHub releases. Studio 1.0.28 needed its runtime installed, and the model had to be downloaded separately. I verified the API settings using the model's API panel. Model discovery worked without authentication, but inference returned 401 until I supplied the panel's development API key.”
-
-## Limits and next step
-
-“This is a bounded, read-only agent. It does not inspect a real service or execute fixes. A small model can still generate unsupported advice. The next improvement would be an evaluated set of representative questions and claim-level citation checks. I would add embeddings only if the runbook collection outgrew lexical retrieval.”
+“Approval is a human checkpoint, not a sandbox. The shell runs with OS permissions and can reach files and the network. I use a disposable directory for the demo. A production version would need OS-level isolation and a representative task evaluation.”
