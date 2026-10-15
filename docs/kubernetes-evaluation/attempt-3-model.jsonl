@@ -1,0 +1,4 @@
+{"model": "qwen2.5-coder-3b", "seconds": 1.715, "response": "```json\n{\"tool\":\"bash\",\"command\":\"kubectl apply -f - <<EOF\\napiVersion: apps/v1\\nkind: Deployment\\nmetadata:\\n  name: web\\nspec:\\n  replicas: 1\\n  selector:\\n    matchLabels:\\n      app: web\\n  template:\\n    metadata:\\n      labels:\\n        app: web\\n    spec:\\n      containers:\\n      - name: web\\n        image: nginx:alpine\\nEOF\"}\n```"}
+{"model": "qwen2.5-coder-3b", "seconds": 0.352, "response": "```json\n{\"tool\":\"bash\",\"command\":\"kubectl get deployments web -o wide\"}\n```"}
+{"model": "qwen2.5-coder-3b", "seconds": 0.38, "response": "```json\n{\"tool\":\"bash\",\"command\":\"kubectl get pods -o wide\"}\n```"}
+{"model": "qwen2.5-coder-3b", "seconds": 0.48, "response": "```json\n{\"answer\":\"Deployment and Pod are correctly set up with one available replica and the Pod is Ready.\"}\n```"}

@@ -48,7 +48,7 @@ The host validates the action, asks for approval, executes it in a persistent Ba
 {"answer":"Created hello.txt and verified its contents."}
 ```
 
-Malformed actions receive corrective feedback and consume a turn. Declined commands are not executed. A command timeout or output overflow terminates the shell process group and ends the session. There is no silent fallback or fabricated success.
+Malformed actions receive corrective feedback and consume a turn. Declined commands are not executed. A command timeout or output overflow terminates the shell process group and ends the session. Tool failures are returned to the model. Final answers are not verified by the host and can falsely claim success.
 
 ## Why this approach
 
@@ -67,5 +67,7 @@ python3 -m unittest discover -s tests -v
 ```
 
 Tests cover approval rejection, action validation, tool feedback, turn limits, persistent shell state, timeout/output cleanup, credential environment filtering and the HTTP contract. They do not test general model competence. See [verification](docs/verification.md), [live run](docs/live-runs.txt), and the [short walkthrough](docs/walkthrough.md).
+
+[Kubernetes evaluation](docs/kubernetes-evaluation/README.md): the 3B model completed a basic Deployment in a prepared namespace. Two broader tasks failed, including one false success report. All prompts, tool transcripts and independent checks are included.
 
 Built with an AI coding assistant. The model runs locally through mimOE; no DeepSeek or OpenAI cloud API credential is required.

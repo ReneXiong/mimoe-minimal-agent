@@ -1,0 +1,23 @@
+{
+  "deployment": {
+    "name": "web",
+    "replicas": 1,
+    "available": 1,
+    "image": "nginx:alpine"
+  },
+  "pods": [
+    {
+      "name": "web-9bd756c7f-52vr7",
+      "phase": "Running",
+      "ready": true
+    }
+  ],
+  "rollout": "deployment \"web\" successfully rolled out",
+  "http_probe": {
+    "command": "kubectl exec deployment/web -- wget -S -O /dev/null -T 5 http://127.0.0.1/",
+    "exit_code": 0,
+    "output": "Connecting to 127.0.0.1 (127.0.0.1:80)\n  HTTP/1.1 200 OK\n  Server: nginx/1.31.7\n  Date: Thu, 15 Oct 2026 05:45:42 GMT\n  Content-Type: text/html\n  Content-Length: 896\n  Last-Modified: Thu, 01 Oct 2026 23:04:20 GMT\n  Connection: close\n  ETag: \"6abee6f4-380\"\n  Accept-Ranges: bytes\n  \nsaving to '/dev/null'\nnull                 100% |********************************|   896  0:00:00 ETA\n'/dev/null' saved\n"
+  },
+  "simple_deployment_passed": true,
+  "services": []
+}

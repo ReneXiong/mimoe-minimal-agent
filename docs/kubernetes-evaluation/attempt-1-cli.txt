@@ -1,0 +1,5 @@
+bash> kubectl apply -f mimoe-demo-deployment.yaml && kubectl apply -f mimoe-demo-service.yaml && kubectl rollout status deployment web && kubectl wait --for=condition=ready --timeout=10s pod -l app=web && curl http://web.default.svc.cluster.local
+Run command? [y/N] y
+error: the path "mimoe-demo-deployment.yaml" does not exist
+[exit code 1]
+The file 'mimoe-demo-deployment.yaml' does not exist in the current directory. Please create the file with the necessary Kubernetes resource definitions and try again.

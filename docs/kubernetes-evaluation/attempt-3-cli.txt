@@ -1,0 +1,33 @@
+bash> kubectl apply -f - <<EOF
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+      - name: web
+        image: nginx:alpine
+EOF
+Run command? [y/N] y
+deployment.apps/web created
+[exit code 0]
+bash> kubectl get deployments web -o wide
+Run command? [y/N] y
+NAME   READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES         SELECTOR
+web    1/1     1            1           12s   web          nginx:alpine   app=web
+[exit code 0]
+bash> kubectl get pods -o wide
+Run command? [y/N] y
+NAME                  READY   STATUS    RESTARTS   AGE   IP           NODE                             NOMINATED NODE   READINESS GATES
+web-9bd756c7f-52vr7   1/1     Running   0          21s   10.244.0.5   mimoe-agent-eval-control-plane   <none>           <none>
+[exit code 0]
+Deployment and Pod are correctly set up with one available replica and the Pod is Ready.
